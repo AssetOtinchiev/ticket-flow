@@ -1,0 +1,6 @@
+@ManualWork_HostAddress = http://localhost:5129
+
+GET {{ManualWork_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,7 @@
+﻿services:
+  manualwork:
+    image: manualwork
+    build:
+      context: .
+      dockerfile: ManualWork/Dockerfile
+
