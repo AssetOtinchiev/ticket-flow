@@ -1,6 +1,12 @@
+using ManualWork.Options;
 using ManualWork.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<KafkaOptions>(builder.Configuration.GetSection("Kafka"));
+
+builder.Services.AddSingleton<KafkaProducerService>();
+builder.Services.AddHostedService<KafkaConsumerService>();
 
 builder.Services.AddGrpc();
 builder.Services.AddOpenApi();
