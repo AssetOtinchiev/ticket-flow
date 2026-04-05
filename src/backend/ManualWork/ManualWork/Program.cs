@@ -1,7 +1,16 @@
 using ManualWork.Options;
 using ManualWork.Services;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var configuration = builder.Configuration.GetConnectionString("Redis");
+    return ConnectionMultiplexer.Connect(configuration);
+});
+
+builder.Services.AddScoped<RedisCacheService>();
 
 builder.Services.Configure<KafkaOptions>(builder.Configuration.GetSection("Kafka"));
 
@@ -26,9 +35,13 @@ app.UseHttpsRedirection();
 
 app.MapGrpcService<GreeterService>();
 
-app.MapGet("/api/status", () =>
-{
-    return Results.Ok(new { status = "running", timestamp = DateTime.UtcNow });
+app.MapGet("/api/status", async (RedisCacheService redisCacheService) =>
+    {
+        var value = await redisCacheService.GetAsync<string>("key");
+        if (value == null)
+            await redisCacheService.SetAsync("key", "key", TimeSpan.FromMinutes(5));
+        
+        return Results.Ok(new { status = "running", timestamp = DateTime.UtcNow });
 })
 .WithName("GetStatus")
 .WithOpenApi();
