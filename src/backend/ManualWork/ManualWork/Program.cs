@@ -1,8 +1,15 @@
+using ClickHouse.Client.ADO;
 using ManualWork.Options;
 using ManualWork.Services;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddScoped<ClickHouseConnection>(_ =>
+{
+    var connectionString = builder.Configuration["ClickHouse:ConnectionString"];
+    return new ClickHouseConnection(connectionString);
+});
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
@@ -11,6 +18,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 });
 
 builder.Services.AddScoped<RedisCacheService>();
+builder.Services.AddScoped<ClickHouseService>();
 
 builder.Services.Configure<KafkaOptions>(builder.Configuration.GetSection("Kafka"));
 
@@ -44,6 +52,24 @@ app.MapGet("/api/status", async (RedisCacheService redisCacheService) =>
         return Results.Ok(new { status = "running", timestamp = DateTime.UtcNow });
 })
 .WithName("GetStatus")
+.WithOpenApi();
+
+app.MapPost("/api/clickhouse/seed", async (ClickHouseService clickHouseService) =>
+{
+    await clickHouseService.EnsureTableAsync();
+    await clickHouseService.InsertSampleDataAsync();
+    return Results.Ok(new { message = "Table ensured and 10 rows inserted" });
+})
+.WithName("SeedClickHouse")
+.WithOpenApi();
+
+app.MapGet("/api/clickhouse/clients", async (ClickHouseService clickHouseService) =>
+{
+    await clickHouseService.EnsureTableAsync();
+    var clients = await clickHouseService.SelectAllAsync();
+    return Results.Ok(clients);
+})
+.WithName("GetClients")
 .WithOpenApi();
 
 app.Run();
